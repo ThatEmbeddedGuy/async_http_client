@@ -18,7 +18,8 @@ find_package(Boost 1.65 COMPONENTS
   filesystem
   thread
   system
-  chrono 
+  chrono
+  regex 
   REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 

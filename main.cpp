@@ -25,7 +25,9 @@ int main(int argc, char* argv[]) {
   try {
     if (argc < 3) {
       std::cout << "Usage: https_client <server> <path>\n" << std::endl;
-      return 1;
+      argv[1] = const_cast<char *>(std::string("localhost:8000").c_str());
+      argv[2] = const_cast<char *>(std::string("/test.cpp").c_str());
+      //return 1;
     }
     AsyncHttpClient client(argv[1], argv[2]);
     client.run();

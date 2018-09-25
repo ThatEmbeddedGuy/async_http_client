@@ -4,6 +4,7 @@
 #include <ostream>
 #include <ctype.h>
 #include <exception>
+#include <boost/regex.hpp>
 
 AsyncHttpClient::AsyncHttpClient(const std::string& server, const std::string& path) : resolver_(io_service), socket_(io_service) {
 
@@ -11,55 +12,32 @@ AsyncHttpClient::AsyncHttpClient(const std::string& server, const std::string& p
    *
    */
   std::string host = server;
-  bool ready2write = false;
   std::string port = "";
-  auto it = host.begin();
 
   // check port
-  while (it != host.end()) {
-    if (*it == ':') {
-      if (*(it+1) != '/') { // find delimeter for port
-        ready2write = true;
-        it = host.erase(it); // remove ':' symbol
-        continue;
-      }
-    }
-    if (ready2write) {
-      if (isdigit(*it)) {
-        port += *it;
-        it = host.erase(it); // remove all port's symbols
-      }
-      else {
-        ready2write = false;
-        break;
-      }
-    }
-    else {
-      ++it;
-    }
+  boost::regex port_exp(":\\d+");
+  boost::smatch what;
+  if (boost::regex_search(host, what, port_exp)) {
+    port = what[0];
+    host.erase(host.find(port), port.size());
+    port.erase(0, 1); // remove ':' symbol
   }
 
   // Check protocol
-  std::string::size_type httpsPos = host.find("https://");
-  std::string::size_type httpPos = host.find("http://");
-  std::string::size_type protDelim = host.find("://"); // if there is another protocol
-  if (httpPos != std::string::npos && httpPos == 0) {
-    host.erase(0, 7);
-  } else if (httpsPos != std::string::npos && httpsPos == 0) {
-    host.erase(0, 8);
-    https_mode_ = true;
-  } else if (protDelim != std::string::npos) {
+  std::string protocol;
+  boost::regex proto_exp(".+://");
+  boost::smatch proto_what;
+  if (boost::regex_search(host, proto_what, proto_exp)) {
+    protocol = proto_what[0];
+    host.erase(host.find(protocol), protocol.size());
+    protocol.resize(protocol.size() - 3); // remove "://" delimeter
+  }
+  if (protocol != "http" && protocol != "https") {
     throw std::runtime_error("Undefined protocol");
   }
-
-  if (port.empty()) {
-    if (https_mode_) {
-      port = "https";
-    }
-    else {
-      port = "http";
-    }
-  }
+  protocol = protocol.empty()? "http" : protocol;
+  https_mode_ = protocol == "https" ? true : false;
+  port = port.empty() ? protocol : port;
 
   std::ostream request_stream(&request_);
   request_stream << "GET " << path << " HTTP/1.0\r\n";
